@@ -210,12 +210,12 @@ Here is our new Feature, with corresponding names, token randomly
 
     sample_n(data.combined[, c("Name", "titles")], 5)
 
-    ##                              Name  titles
-    ## 1015      Carver, Mr. Alfred John     Mr.
-    ## 112          Zabour, Miss. Hileni   Miss.
-    ## 165  Panula, Master. Eino Viljami Master.
-    ## 1195            Pokrnic, Mr. Tome     Mr.
-    ## 1096     Andrew, Mr. Frank Thomas     Mr.
+    ##                                               Name titles
+    ## 92                      Andreasson, Mr. Paul Edvin    Mr.
+    ## 920                        Brady, Mr. John Bertram    Mr.
+    ## 1082                          Angle, Mr. William A    Mr.
+    ## 855  Carter, Mrs. Ernest Courtenay (Lilian Hughes)   Mrs.
+    ## 139                            Osen, Mr. Olaf Elon    Mr.
 
 See what this feature say
 
