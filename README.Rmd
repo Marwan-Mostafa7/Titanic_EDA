@@ -1,0 +1,242 @@
+---
+title: "Titanic"
+date: "November 12, 2018"
+output: md_document
+---
+
+```{r setup}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Our Project is about Determining whether a person is dead or was lucky enough to survive from the titanic trajedgy
+
+```{r libraries, include=FALSE}
+library(dplyr)
+library(ggplot2)
+library(stringr)
+```
+
+```{r reading data}
+train <- read.csv('train.csv')
+test  <- read.csv('test.csv')
+```
+## Looking at our data
+
+```{r train}
+str(train)
+```
+
+```{r test}
+str(test)
+```
+
+First thing to notice, Some Features has variables with type **numeric**
+or **int** that can be turned to **factor** as it's a **Discrete** Feature. (Survived, Pclass, Sibsb, Parch)
+
+But before that, We combine both train and test in a single DataFrame
+
+Test dataset contains all train dataset Features except the *Survived* feature since it's the Dependent Variable in Our Challenge (that we should predict its value)
+
+So we add the Survived Column, thus we can combine 2 datasets by row
+```{r test.survived}
+test.survived <- data.frame(Survived = rep("None" , nrow(test)), test[,])
+```
+```{r dim_train}
+dim(train)
+```
+```{r dim_test}
+dim(test.survived)
+```
+```{r combine}
+data.combined <- rbind(train , test.survived)
+```
+
+Making sure that these features can be treated as cateorical data
+```{r}
+  table(data.combined$SibSp)
+```
+```{r}
+  table(data.combined$Parch)
+```
+
+So we can convert data-type of those features to be Categorical
+```{r}
+data.combined$Survived <- as.factor(data.combined$Survived)
+data.combined$Pclass <- as.factor(data.combined$Pclass)
+data.combined$SibSp <- as.factor(data.combined$SibSp)
+data.combined$Parch <- as.factor(data.combined$Parch)
+```
+
+
+### Plotting is the Best way to analyse your data
+
+Well the data is Skewed to people didn't make it. 
+```{r}
+ggplot(data.combined[which(data.combined$Survived != "None"),],aes(x= Survived))+
+       geom_bar(fill = "#1ec97f")+
+       ggtitle("Survival Ratio")
+
+```
+
+The Same previous plot, according to classes
+```{r}
+ggplot(data.combined[data.combined$Survived != "None",], aes(x = Pclass, fill = Survived))+
+  geom_bar( position = "dodge")+
+  xlab("Pclass")+
+  ylab("Total Count")+
+  labs(fill = "Survived")+
+  ggtitle("Survival across Classes")
+
+```
+
+First class has the Highest probability for Survivnig
+While the third class is absolute opposite
+Second class fifty-fifty
+
+which means *Class* is an important Feature, that we should take into consideration while building our model
+
+Moving to *Names* Feature
+
+```{r}
+head(data.combined$Name)
+```
+
+`"Mr", "Mrs", "Miss", "Master"`
+these names may help us in our analysis, or we can create a new Feature depends on these `titles`
+
+let's see if that hypothese is true
+
+We extract "Misses" only from all the passengers
+
+► `str_detect()`
+takes : 1- vector of string (Name column) -- 
+        2- pattern  (the "Miss" string)
+Outputs: Logical vector (Miss or Not)
+
+```{r}
+misses <- data.combined[which(str_detect(data.combined$Name , "Miss.")) , ]
+nrow(misses)
+```
+
+Now plotting `misses` to see if it's an effective feature or not
+
+```{r}
+ggplot(misses[misses$Survived != "None" ,] ,
+       aes(x = Pclass , fill = Survived))+
+       geom_bar(position = "dodge")+
+       ggtitle("Survival Of Misses across Classes")
+```
+
+Well it seems that in
+   Class 1, class 2 : we can say All misses Survived
+   class 3 : it looks like a coin luck.
+
+
+So doing same through another `title`
+
+
+```{r}
+Mrs <- data.combined[which(str_detect(data.combined$Name , "Mrs.")) ,]
+nrow(Mrs)
+```
+
+
+```{r}
+ggplot(Mrs[Mrs$Survived != "None" , ] ,aes(x = Pclass , fill = Survived))+
+  geom_bar(position = "dodge")+
+  ggtitle("Survival of Mrs across Classes")
+```
+
+Looks the same as the `Miss` title
+
+So it may be a good feature to create
+
+first thing we make a method that returns whatever title it is
+then add it into a vector 
+that we then insert to our `data.combined` dataFrame
+
+
+►`grep()` method
+  takes : pattern first
+          string value (Name)
+  outputs: 1 (match)
+           integer(0) (didn't match)
+          
+we convert the `integer(0) -> 0` using `length()`;
+
+```{r}
+assign_titles <- function(name){
+  
+  name <- as.character(name)
+  
+  if(length(grep("Miss." , name) > 0))
+    return("Miss.")
+  if(length(grep("Mrs."  , name) > 0))
+    return("Mrs.")
+  if(length(grep("Mr." , name) > 0))
+    return("Mr.")
+  if(length(grep("Master" , name) > 0))
+    return("Master.")
+  else
+    return("Other")
+}
+
+```
+
+Now initalizing the `title` vector
+```{r}
+titles <- NULL
+```
+
+and inserting new titles using our methods
+```{r}
+for(i in 1:nrow(data.combined)){
+  titles <- c(titles , assign_titles(data.combined[i , "Name"]))
+}
+```
+finally, adding it to our dataframe
+```{r}
+data.combined$titles <- as.factor(titles)
+```
+
+Here is our new Feature, with corresponding names, token randomly
+```{r}
+sample_n(data.combined[, c("Name", "titles")], 5)
+```
+
+See what this feature say
+
+```{r}
+ggplot(data.combined[which(data.combined$Survived != "None"),],aes(x = titles, fill=Survived))+
+  geom_bar(position = "dodge")+
+  ggtitle("Survival across titles")
+```
+
+which means that `Men` are the most likely to be dead
+and `Miss, Mrs` more likely to live
+while masters (young men) have equal propability (until now)
+
+Now look at our data with respect to 
+`Class, title and Survived` Features
+
+```{r}
+ggplot(data.combined[data.combined$Survived != "None", ] , aes(x = titles , fill = Survived))+
+  geom_bar()+
+  facet_wrap(~Pclass)+
+  ggtitle("Survival of Titles w.r.t Class")
+```
+
+
+we can see that 
+  *Master*: survived with 100% in class 1 and 2 <br>
+  *Misses*: almost same<br>
+  *Mrs*   : almost same <br>
+  *Mr*    : in class 1 - 50/50<br>
+            in class 2 - more probable to be dead<br><br>
+  in class 3 the Savage class.<br>
+  *Mr* are the most likely to die<br>
+  while others have almost 50/50 probability<br><br>
+  
+  <hr>
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
